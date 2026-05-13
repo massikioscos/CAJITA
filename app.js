@@ -1,6 +1,6 @@
 // ── CONFIG ──
 const CLIENT_ID = '408356334926-gc0935hs83tnl2v809fvf7p2v0ccgjs0.apps.googleusercontent.com';
-const SHEET       = 'INVENTARIO';
+const SHEET       = 'Cajita';
 const ZONES_SHEET = 'ZONAS';
 const SCOPE       = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const HDRS      = ['ID_Codigo','Nombre_Producto','Precio_Venta','Fecha_Actualizacion','Ubicacion_Detallada','Zona','Foto_URL','Notas','Fecha_Alta'];
