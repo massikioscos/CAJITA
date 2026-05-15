@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Inventario V2</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-logo">📦</div>
+  <div class="login-title">Inventario</div>
+  <div class="login-sub">Entrá con tu cuenta de Google<br>para acceder al sistema</div>
+  <button class="login-btn" onclick="signIn()">
+    <img src="https://www.google.com/favicon.ico" alt="Google">
+    Entrar con Google
+  </button>
+  <div class="login-err" id="loginErr">No se pudo iniciar sesión. Intentá de nuevo.</div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <div class="header">
+    <div class="logo">📦 <span>Inventario</span><span id="sd" class="sync-dot s"></span></div>
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input type="text" placeholder="Buscar producto..." oninput="onSearch(this.value)">
+    </div>
+    <button class="btn-add" onclick="openForm()">+ Nuevo</button>
+  </div>
+
+  <div class="filters" id="filterBar"></div>
+
+  <div class="main">
+    <div class="status-row">
+      <span class="status-txt" id="statusTxt">Cargando...</span>
+      <span class="alert-pill" id="alertPill" style="display:none" onclick="setFilter('__old__',null)"></span>
+    </div>
+    <div class="cards" id="cardsEl">
+      <div class="loading"><div class="spinner"></div><div class="loading-t">Conectando con Google Sheets...</div></div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="view('lista',this)"><span class="nav-ico">📦</span>Inventario</button>
+    <button class="nav-btn" onclick="view('vencidos',this)"><span class="nav-ico">⚠️</span>Recotizar</button>
+    <button class="nav-btn" onclick="view('zonas',this)"><span class="nav-ico">📍</span>Zonas</button>
+    <button class="nav-btn" onclick="view('resumen',this)"><span class="nav-ico">📊</span>Resumen</button>
+  </div>
+</div>
+
+<!-- DETALLE -->
+<div class="overlay" id="oDetail" onclick="bgClose('oDetail',event)">
+  <div class="sheet"><div class="handle"></div><div id="detailBody"></div></div>
+</div>
+
+<!-- FORM -->
+<div class="overlay" id="oForm" onclick="bgClose('oForm',event)">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="formTtl">Nuevo Producto</div>
+
+    <div class="fg">
+      <label class="fl">Código (asignado automáticamente)</label>
+      <div class="auto-code-badge" id="autoCodeBadge"># ——</div>
+    </div>
+    <div class="fg"><label class="fl">Nombre del Producto *</label><input class="fi" id="fN" placeholder="Ej: Tornillo hexagonal 3/4"></div>
+    <div class="fg"><label class="fl">Precio de Venta $</label><input class="fi" id="fP" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">Ubicación Detallada</label><textarea class="fta" id="fU" placeholder="Ej: Al fondo detrás de las cajas de madera, cerca de lona azul"></textarea></div>
+    <div class="fg"><label class="fl">Zona</label>
+      <select class="fs" id="fZ"><option value="">Seleccionar zona...</option></select>
+    </div>
+    <div class="fg">
+      <label class="fl">Foto del Producto</label>
+      <input type="file" id="fFI" accept="image/*" capture="environment" style="display:none" onchange="previewPh(this)">
+      <div class="photo-zone" onclick="document.getElementById('fFI').click()">
+        <img class="photo-prev" id="fFP">
+        <div id="fFPH"><div class="pz-ico">📷</div><div class="pz-txt">Tocar para sacar foto</div></div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="fNo" placeholder="Palabras clave, observaciones..."></textarea></div>
+
+    <button class="btn-save" id="btnSave" onclick="saveProduct()">💾 Guardar</button>
+    <button class="btn-red" id="btnDelete" onclick="deleteProduct()" style="display:none">🗑️ Eliminar Producto</button>
+    <div class="save-msg" id="saveMsg"></div>
+    <button class="btn-gray" onclick="closeForm()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ZONAS -->
+<div class="overlay" id="oZonas" onclick="bgClose('oZonas',event)">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">📍 Gestionar Zonas</div>
+    <p style="font-size:14px;color:#9aa3b8;font-weight:600;margin-bottom:16px">Agregá o eliminá los lugares del depósito.</p>
+    <div class="zone-list" id="zoneListEl"></div>
+    <div class="zone-add-row">
+      <input class="zone-input" id="newZone" placeholder="Nombre de zona nueva...">
+      <button class="zone-add-btn" onclick="addZone()">+ Agregar</button>
+    </div>
+    <button class="btn-blue" style="margin-top:16px" onclick="saveZones()">✅ Guardar Zonas</button>
+    <button class="btn-gray" onclick="close1('oZonas')">Cancelar</button>
+  </div>
+</div>
+
+<!-- SESIÓN EXPIRADA -->
+<div class="overlay" id="oSession" style="z-index: 9999;">
+  <div class="sheet" style="text-align: center; padding-top: 30px;">
+    <div style="font-size: 48px; margin-bottom: 12px;">⏳</div>
+    <div class="sheet-title" style="margin-bottom: 10px;">Sesión Expirada</div>
+    <p style="font-size: 15px; color: #6b7c9a; font-weight: 600; margin-bottom: 24px;">
+      Por seguridad, la conexión con Google dura 1 hora.<br><br>
+      Toca el botón para recargar la página y reconectar automáticamente.
+    </p>
+    <button class="btn-blue" onclick="location.reload()">🔄 Recargar Página</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
