@@ -3,7 +3,7 @@ const CLIENT_ID = '408356334926-gc0935hs83tnl2v809fvf7p2v0ccgjs0.apps.googleuser
 const SHEET = 'INVENTARIO';
 const ZONES_SHEET = 'ZONAS';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-const HDRS = ['ID_Codigo', 'Nombre_Producto', 'Precio_Venta', 'Fecha_Actualizacion', 'Ubicacion_Detallada', 'Zona', 'Foto_URL', 'Notas', 'Fecha_Alta'];
+const HDRS = ['ID_Codigo', 'Nombre_Producto', 'Precio_Venta', 'Fecha_Actualizacion', 'Ubicacion_Detallada', 'Zona', 'Foto_URL', 'Notas', 'Fecha_Alta', 'Codigo_Barras'];
 
 let accessToken = null;
 let activeSheetId = null;
@@ -36,6 +36,7 @@ function signIn() {
       renderChips();
       fillZoneSelect();
       initApp();
+      setTimeout(() => document.getElementById('searchInput').focus(), 100);
     }
   });
   // Quitamos el prompt: consent para que, si ya tienen permisos, entre directo
@@ -55,6 +56,7 @@ window.addEventListener('load', () => {
     renderChips();
     fillZoneSelect();
     initApp();
+    setTimeout(() => document.getElementById('searchInput').focus(), 100);
   }
 });
 
@@ -79,7 +81,7 @@ async function sheetsPut(range, values) {
 }
 
 async function sheetsAppend(values) {
-  return fetch(`${getBase()}/${SHEET}!A:I:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+  return fetch(`${getBase()}/${SHEET}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values })
@@ -114,19 +116,23 @@ async function initApp() {
 
 async function initSheetHeaders() {
   try {
-    const d = await sheetsGet('A1:I1');
+    const d = await sheetsGet('A1:J1');
     if (!d.values || d.values[0][0] !== 'ID_Codigo') {
-      await sheetsPut('A1:I1', [HDRS]);
+      await sheetsPut('A1:J1', [HDRS]);
+    } else if (d.values[0].length < 10) {
+      const newHeaders = [...d.values[0]];
+      newHeaders[9] = 'Codigo_Barras';
+      await sheetsPut('A1:J1', [newHeaders]);
     }
   } catch (e) {
-    await sheetsPut('A1:I1', [HDRS]);
+    await sheetsPut('A1:J1', [HDRS]);
   }
 }
 
 async function load() {
   sync('s');
   try {
-    const d = await sheetsGet('A2:I5000');
+    const d = await sheetsGet('A2:J5000');
     if (d.error) throw new Error(d.error.message);
     products = (d.values || []).map((row, i) => ({
       rowIndex: i + 2,
@@ -139,6 +145,7 @@ async function load() {
       foto: row[6] || '',
       notas: row[7] || '',
       fechaAlta: row[8] || '',
+      barras: row[9] || ''
     })).filter(p => p.codigo || p.nombre);
     sync('ok');
     apply();
@@ -185,7 +192,7 @@ function apply() {
   let res = products;
   if (curSearch) {
     const q = curSearch;
-    res = res.filter(p => [p.codigo, p.nombre, p.ubicacion, p.zona, p.notas].join(' ').toLowerCase().includes(q));
+    res = res.filter(p => [p.codigo, p.nombre, p.ubicacion, p.zona, p.notas, p.barras].join(' ').toLowerCase().includes(q));
   }
   if (curFilter === '__old__') res = res.filter(p => days(p.fecha) > 30);
   else if (curFilter !== 'todos') res = res.filter(p => p.zona === curFilter);
@@ -278,6 +285,7 @@ function openDetail(cod) {
         <div class="box-val">${p.ubicacion || '—'}</div>
       </div>
       ${p.zona ? `<div class="box"><div class="box-lbl">Zona</div><div class="box-val">${p.zona}</div></div>` : ''}
+      ${p.barras ? `<div class="box full"><div class="box-lbl">Código de Barras</div><div class="box-val">${p.barras}</div></div>` : ''}
       ${p.notas ? `<div class="box full"><div class="box-lbl">Notas</div><div class="box-val">${p.notas}</div></div>` : ''}
     </div>
     <button class="btn-blue" onclick="openEdit('${p.codigo}')">✏️ Editar / Actualizar Precio</button>
@@ -308,6 +316,7 @@ function openEdit(cod) {
   document.getElementById('autoCodeBadge').dataset.code = p.codigo;
   document.getElementById('fN').value = p.nombre;
   document.getElementById('fP').value = p.precio || '';
+  document.getElementById('fBar').value = p.barras || '';
   document.getElementById('fU').value = p.ubicacion;
   document.getElementById('fZ').value = p.zona;
   document.getElementById('fNo').value = p.notas;
@@ -319,7 +328,7 @@ function openEdit(cod) {
 }
 
 function clearF() {
-  ['fN', 'fP', 'fU', 'fNo'].forEach(id => document.getElementById(id).value = '');
+  ['fN', 'fP', 'fBar', 'fU', 'fNo'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fZ').value = '';
   document.getElementById('fFP').style.display = 'none';
   document.getElementById('fFPH').style.display = 'block';
@@ -397,12 +406,13 @@ async function saveProduct() {
     finalPhoto,
     document.getElementById('fNo').value,
     ex ? ex.fechaAlta : hoy,
+    document.getElementById('fBar').value.trim()
   ];
 
   try {
     let d;
     if (editRow > 0) {
-      d = await sheetsPut(`A${editRow}:I${editRow}`, [row]);
+      d = await sheetsPut(`A${editRow}:J${editRow}`, [row]);
     } else {
       d = await sheetsAppend([row]);
     }
@@ -450,8 +460,8 @@ async function deleteProduct() {
     }
 
     // Limpiar la fila en Sheets (escribir espacios en blanco para no descuadrar el resto y nuestro filtro lo ignorará)
-    const emptyRow = ['', '', '', '', '', '', '', '', ''];
-    const d = await sheetsPut(`A${p.rowIndex}:I${p.rowIndex}`, [emptyRow]);
+    const emptyRow = ['', '', '', '', '', '', '', '', '', ''];
+    const d = await sheetsPut(`A${p.rowIndex}:J${p.rowIndex}`, [emptyRow]);
 
     if (d.error) throw new Error(d.error.message);
 
@@ -467,6 +477,17 @@ async function deleteProduct() {
   }
 }
 
+function handleEnter(e, nextId) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (nextId === 'save') {
+      saveProduct();
+    } else {
+      const el = document.getElementById(nextId);
+      if (el) el.focus();
+    }
+  }
+}
 
 // ── DRIVE & API HELPERS ──
 async function getOrCreateSheet() {

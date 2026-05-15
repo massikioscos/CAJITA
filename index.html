@@ -28,7 +28,7 @@
     <div class="logo">📦 <span>Inventario</span><span id="sd" class="sync-dot s"></span></div>
     <div class="search-wrap">
       <span class="search-ico">🔍</span>
-      <input type="text" placeholder="Buscar producto..." oninput="onSearch(this.value)">
+      <input type="text" id="searchInput" placeholder="Buscar o escanear..." oninput="onSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();onSearch(this.value);this.blur();}">
     </div>
     <button class="btn-add" onclick="openForm()">+ Nuevo</button>
   </div>
@@ -68,8 +68,9 @@
       <label class="fl">Código (asignado automáticamente)</label>
       <div class="auto-code-badge" id="autoCodeBadge"># ——</div>
     </div>
-    <div class="fg"><label class="fl">Nombre del Producto *</label><input class="fi" id="fN" placeholder="Ej: Tornillo hexagonal 3/4"></div>
-    <div class="fg"><label class="fl">Precio de Venta $</label><input class="fi" id="fP" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">Nombre del Producto *</label><input class="fi" id="fN" placeholder="Ej: Tornillo hexagonal 3/4" onkeydown="handleEnter(event, 'fBar')"></div>
+    <div class="fg"><label class="fl">Código de Barras</label><input class="fi" id="fBar" placeholder="Ej: 779123456789" onkeydown="handleEnter(event, 'fP')"></div>
+    <div class="fg"><label class="fl">Precio de Venta $</label><input class="fi" id="fP" type="number" placeholder="0" onkeydown="handleEnter(event, 'fU')"></div>
     <div class="fg"><label class="fl">Ubicación Detallada</label><textarea class="fta" id="fU" placeholder="Ej: Al fondo detrás de las cajas de madera, cerca de lona azul"></textarea></div>
     <div class="fg"><label class="fl">Zona</label>
       <select class="fs" id="fZ"><option value="">Seleccionar zona...</option></select>
