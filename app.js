@@ -179,14 +179,35 @@ function nextCode() {
 // ── SEMAPHORE ──
 function days(f) {
   if (!f) return 999;
-  const p = f.split('/');
-  const d = p.length === 3 ? new Date(+p[2], +p[1] - 1, +p[0]) : new Date(f);
-  if (isNaN(d)) return 999;
-  return Math.floor((new Date() - d) / 86400000);
+  let d;
+  const str = String(f).trim();
+  // Handle dd/mm/yyyy or dd/mm/yyyy hh:mm:ss formats from Google Sheets
+  const parts = str.split('/');
+  if (parts.length === 3) {
+    // The third part may contain a time portion like "2025 14:30:00"
+    const dayPart = parseInt(parts[0], 10);
+    const monthPart = parseInt(parts[1], 10);
+    const yearAndTime = parts[2].split(' ');
+    const yearPart = parseInt(yearAndTime[0], 10);
+    d = new Date(yearPart, monthPart - 1, dayPart);
+  } else if (!isNaN(Number(str))) {
+    // Google Sheets serial date number (days since 1899-12-30)
+    const serial = Number(str);
+    if (serial > 1000) {
+      d = new Date(1899, 11, 30 + serial);
+    } else {
+      d = new Date(str);
+    }
+  } else {
+    d = new Date(str);
+  }
+  if (!d || isNaN(d.getTime())) return 999;
+  const diff = Math.floor((new Date() - d) / 86400000);
+  return Math.max(0, diff);
 }
 function pc(d) { return d <= 15 ? 'p-ok' : d <= 30 ? 'p-warn' : 'p-old'; }
 function tc(d) { return d <= 15 ? 't-ok' : d <= 30 ? 't-warn' : 't-old'; }
-function tt(d) { if (d >= 999) return '📅 Sin fecha'; if (d <= 15) return `✅ ${d}d`; if (d <= 30) return `⚠️ ${d}d`; return `🔴 ${d}d`; }
+function tt(d) { if (d >= 999) return '📅 Sin fecha'; if (d === 0) return '✅ Hoy'; if (d === 1) return '✅ Ayer'; if (d <= 15) return `✅ ${d}d`; if (d <= 30) return `⚠️ ${d}d`; return `🔴 ${d}d`; }
 function sc(d) { return d <= 15 ? '#16a34a' : d <= 30 ? '#d97706' : '#e53e3e'; }
 function st(d) { if (d >= 999) return 'Sin fecha registrada'; if (d <= 15) return '✅ Precio vigente'; if (d <= 30) return '⚠️ Verificar precio pronto'; return '🔴 RECOTIZAR ANTES DE VENDER'; }
 
