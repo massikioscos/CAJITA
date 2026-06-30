@@ -48,7 +48,7 @@
   <div class="nav">
     <button class="nav-btn active" onclick="view('lista',this)"><span class="nav-ico">📦</span>Inventario</button>
     <button class="nav-btn" onclick="view('vencidos',this)"><span class="nav-ico">⚠️</span>Recotizar</button>
-    <button class="nav-btn" onclick="view('zonas',this)"><span class="nav-ico">📍</span>Zonas</button>
+    <button class="nav-btn" onclick="view('categorias',this)"><span class="nav-ico">🏷️</span>Categorías</button>
     <button class="nav-btn" onclick="view('resumen',this)"><span class="nav-ico">📊</span>Resumen</button>
   </div>
 </div>
@@ -70,11 +70,11 @@
     </div>
     <div class="fg"><label class="fl">Nombre del Producto *</label><input class="fi" id="fN" placeholder="Ej: Tornillo hexagonal 3/4" onkeydown="handleEnter(event, 'fBar')"></div>
     <div class="fg"><label class="fl">Código de Barras</label><input class="fi" id="fBar" placeholder="Ej: 779123456789" onkeydown="handleEnter(event, 'fP')"></div>
-    <div class="fg"><label class="fl">Precio de Venta $</label><input class="fi" id="fP" type="number" placeholder="0" onkeydown="handleEnter(event, 'fU')"></div>
-    <div class="fg"><label class="fl">Ubicación Detallada</label><textarea class="fta" id="fU" placeholder="Ej: Al fondo detrás de las cajas de madera, cerca de lona azul"></textarea></div>
-    <div class="fg"><label class="fl">Zona</label>
-      <select class="fs" id="fZ"><option value="">Seleccionar zona...</option></select>
+    <div class="fg"><label class="fl">Precio de Venta $</label><input class="fi" id="fP" type="number" placeholder="0" onkeydown="handleEnter(event, 'fCat')"></div>
+    <div class="fg"><label class="fl">Tipo de Producto (Categoría)</label>
+      <select class="fs" id="fCat"><option value="">Seleccionar categoría...</option></select>
     </div>
+    <div class="fg"><label class="fl">Ubicación Detallada</label><textarea class="fta" id="fU" placeholder="Ej: Al fondo detrás de las cajas de madera, cerca de lona azul"></textarea></div>
     <div class="fg">
       <label class="fl">Foto del Producto</label>
       <input type="file" id="fFI" accept="image/*" capture="environment" style="display:none" onchange="previewPh(this)">
@@ -92,19 +92,19 @@
   </div>
 </div>
 
-<!-- ZONAS -->
-<div class="overlay" id="oZonas" onclick="bgClose('oZonas',event)">
+<!-- CATEGORIAS -->
+<div class="overlay" id="oCategorias" onclick="bgClose('oCategorias',event)">
   <div class="sheet">
     <div class="handle"></div>
-    <div class="sheet-title">📍 Gestionar Zonas</div>
-    <p style="font-size:14px;color:#9aa3b8;font-weight:600;margin-bottom:16px">Agregá o eliminá los lugares del depósito.</p>
-    <div class="zone-list" id="zoneListEl"></div>
-    <div class="zone-add-row">
-      <input class="zone-input" id="newZone" placeholder="Nombre de zona nueva...">
-      <button class="zone-add-btn" onclick="addZone()">+ Agregar</button>
+    <div class="sheet-title">🏷️ Gestionar Categorías</div>
+    <p style="font-size:14px;color:#9aa3b8;font-weight:600;margin-bottom:16px">Agregá o eliminá los tipos de producto.</p>
+    <div class="category-list" id="categoryListEl"></div>
+    <div class="category-add-row">
+      <input class="category-input" id="newCategory" placeholder="Nombre de categoría nueva...">
+      <button class="category-add-btn" onclick="addCategory()">+ Agregar</button>
     </div>
-    <button class="btn-blue" style="margin-top:16px" onclick="saveZones()">✅ Guardar Zonas</button>
-    <button class="btn-gray" onclick="close1('oZonas')">Cancelar</button>
+    <button class="btn-blue" style="margin-top:16px" onclick="saveCategories()">✅ Guardar Categorías</button>
+    <button class="btn-gray" onclick="close1('oCategorias')">Cancelar</button>
   </div>
 </div>
 

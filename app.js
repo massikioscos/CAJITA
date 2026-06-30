@@ -1,9 +1,9 @@
 // ── CONFIG ──
 const CLIENT_ID = '408356334926-gc0935hs83tnl2v809fvf7p2v0ccgjs0.apps.googleusercontent.com';
 const SHEET = 'INVENTARIO';
-const ZONES_SHEET = 'ZONAS';
+const CATEGORIES_SHEET = 'CATEGORIAS';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-const HDRS = ['ID_Codigo', 'Nombre_Producto', 'Precio_Venta', 'Fecha_Actualizacion', 'Ubicacion_Detallada', 'Zona', 'Foto_URL', 'Notas', 'Fecha_Alta', 'Codigo_Barras'];
+const HDRS = ['ID_Codigo', 'Nombre_Producto', 'Precio_Venta', 'Fecha_Actualizacion', 'Ubicacion_Detallada', 'Categoria', 'Foto_URL', 'Notas', 'Fecha_Alta', 'Codigo_Barras'];
 
 let accessToken = null;
 let activeSheetId = null;
@@ -14,7 +14,7 @@ let editRow = -1;
 let ph64 = null;
 let currentPhotoFile = null;
 let folderId = null;
-let zones = [];
+let categories = [];
 
 // ── GOOGLE SIGN IN ──
 function signIn() {
@@ -34,7 +34,7 @@ function signIn() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appShell').style.display = 'flex';
       renderChips();
-      fillZoneSelect();
+      fillCategorySelect();
       initApp();
       setTimeout(() => document.getElementById('searchInput').focus(), 100);
     }
@@ -54,7 +54,7 @@ window.addEventListener('load', () => {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appShell').style.display = 'flex';
     renderChips();
-    fillZoneSelect();
+    fillCategorySelect();
     initApp();
     setTimeout(() => document.getElementById('searchInput').focus(), 100);
   }
@@ -101,10 +101,10 @@ async function initApp() {
   try {
     activeSheetId = await getOrCreateSheet();
     await initSheetHeaders();
-    await ensureZonesSheet();
-    await loadZonesFromSheet();
+    await ensureCategoriesSheet();
+    await loadCategoriesFromSheet();
     renderChips();
-    fillZoneSelect();
+    fillCategorySelect();
     await load();
     clearTimeout(loadTimeout);
   } catch (e) {
@@ -119,10 +119,20 @@ async function initSheetHeaders() {
     const d = await sheetsGet('A1:J1');
     if (!d.values || d.values[0][0] !== 'ID_Codigo') {
       await sheetsPut('A1:J1', [HDRS]);
-    } else if (d.values[0].length < 10) {
-      const newHeaders = [...d.values[0]];
-      newHeaders[9] = 'Codigo_Barras';
-      await sheetsPut('A1:J1', [newHeaders]);
+    } else {
+      let headers = [...d.values[0]];
+      let updated = false;
+      if (headers[5] === 'Zona') {
+        headers[5] = 'Categoria';
+        updated = true;
+      }
+      if (headers.length < 10) {
+        headers[9] = 'Codigo_Barras';
+        updated = true;
+      }
+      if (updated) {
+        await sheetsPut('A1:J1', [headers]);
+      }
     }
   } catch (e) {
     await sheetsPut('A1:J1', [HDRS]);
@@ -141,7 +151,7 @@ async function load() {
       precio: parseFloat(row[2]) || 0,
       fecha: row[3] || '',
       ubicacion: row[4] || '',
-      zona: row[5] || '',
+      categoria: row[5] || '',
       foto: row[6] || '',
       notas: row[7] || '',
       fechaAlta: row[8] || '',
@@ -192,10 +202,10 @@ function apply() {
   let res = products;
   if (curSearch) {
     const q = curSearch;
-    res = res.filter(p => [p.codigo, p.nombre, p.ubicacion, p.zona, p.notas, p.barras].join(' ').toLowerCase().includes(q));
+    res = res.filter(p => [p.codigo, p.nombre, p.ubicacion, p.categoria, p.notas, p.barras].join(' ').toLowerCase().includes(q));
   }
   if (curFilter === '__old__') res = res.filter(p => days(p.fecha) > 30);
-  else if (curFilter !== 'todos') res = res.filter(p => p.zona === curFilter);
+  else if (curFilter !== 'todos') res = res.filter(p => p.categoria === curFilter);
   render(res);
   document.getElementById('statusTxt').textContent = `${res.length} producto${res.length !== 1 ? 's' : ''}`;
 }
@@ -226,7 +236,7 @@ function render(list) {
       <div class="card-body">
         <div class="card-code"># ${p.codigo}</div>
         <div class="card-name">${p.nombre}</div>
-        <div class="card-loc">📍 ${p.ubicacion || p.zona || 'Sin ubicación'}</div>
+        <div class="card-loc">📍 ${p.ubicacion || p.categoria || 'Sin ubicación'}</div>
       </div>
       <div class="card-right">
         <div class="price ${pc(d)}">$${fmt(p.precio)}</div>
@@ -284,7 +294,7 @@ function openDetail(cod) {
         <div class="box-lbl">📍 Ubicación</div>
         <div class="box-val">${p.ubicacion || '—'}</div>
       </div>
-      ${p.zona ? `<div class="box"><div class="box-lbl">Zona</div><div class="box-val">${p.zona}</div></div>` : ''}
+      ${p.categoria ? `<div class="box"><div class="box-lbl">Categoría</div><div class="box-val">${p.categoria}</div></div>` : ''}
       ${p.barras ? `<div class="box full"><div class="box-lbl">Código de Barras</div><div class="box-val">${p.barras}</div></div>` : ''}
       ${p.notas ? `<div class="box full"><div class="box-lbl">Notas</div><div class="box-val">${p.notas}</div></div>` : ''}
     </div>
@@ -318,7 +328,7 @@ function openEdit(cod) {
   document.getElementById('fP').value = p.precio || '';
   document.getElementById('fBar').value = p.barras || '';
   document.getElementById('fU').value = p.ubicacion;
-  document.getElementById('fZ').value = p.zona;
+  document.getElementById('fCat').value = p.categoria;
   document.getElementById('fNo').value = p.notas;
   const prev = document.getElementById('fFP'), ph = document.getElementById('fFPH');
   if (p.foto) { prev.src = p.foto; prev.style.display = 'block'; ph.style.display = 'none'; }
@@ -329,7 +339,7 @@ function openEdit(cod) {
 
 function clearF() {
   ['fN', 'fP', 'fBar', 'fU', 'fNo'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('fZ').value = '';
+  document.getElementById('fCat').value = '';
   document.getElementById('fFP').style.display = 'none';
   document.getElementById('fFPH').style.display = 'block';
   document.getElementById('saveMsg').textContent = '';
@@ -402,7 +412,7 @@ async function saveProduct() {
     document.getElementById('fP').value,
     hoy,
     document.getElementById('fU').value,
-    document.getElementById('fZ').value,
+    document.getElementById('fCat').value,
     finalPhoto,
     document.getElementById('fNo').value,
     ex ? ex.fechaAlta : hoy,
@@ -506,7 +516,7 @@ async function getOrCreateSheet() {
       properties: { title: 'Mi Inventario Cajita' },
       sheets: [
         { properties: { title: SHEET } },
-        { properties: { title: ZONES_SHEET } }
+        { properties: { title: CATEGORIES_SHEET } }
       ]
     })
   });
@@ -514,66 +524,99 @@ async function getOrCreateSheet() {
   return data.spreadsheetId;
 }
 
-// Asegurar que la pestaña ZONAS exista (para spreadsheets creados antes de este update)
-async function ensureZonesSheet() {
+// Asegurar que la pestaña CATEGORIAS exista y migrar datos de ZONAS si es necesario
+async function ensureCategoriesSheet() {
   try {
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}?fields=sheets.properties.title`, {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}?fields=sheets.properties.title,sheets.properties.sheetId`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const data = await res.json();
-    const exists = data.sheets && data.sheets.some(s => s.properties.title === ZONES_SHEET);
+    const exists = data.sheets && data.sheets.some(s => s.properties.title === CATEGORIES_SHEET);
     if (!exists) {
+      const hasOldZones = data.sheets && data.sheets.some(s => s.properties.title === 'ZONAS');
+      
+      // Crear la pestaña CATEGORIAS
       await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}:batchUpdate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requests: [{ addSheet: { properties: { title: ZONES_SHEET } } }]
+          requests: [{ addSheet: { properties: { title: CATEGORIES_SHEET } } }]
         })
       });
+      
+      // Migración amigable de datos si existía la pestaña antigua ZONAS
+      if (hasOldZones) {
+        try {
+          const oldRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/ZONAS!A:A`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          const oldData = await oldRes.json();
+          if (oldData.values && oldData.values.length > 0) {
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${CATEGORIES_SHEET}!A1:A${oldData.values.length}?valueInputOption=USER_ENTERED`, {
+              method: 'PUT',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ values: oldData.values })
+            });
+          }
+          // Borrar la pestaña ZONAS para no dejar archivos residuales
+          const oldSheet = data.sheets.find(s => s.properties.title === 'ZONAS');
+          if (oldSheet) {
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}:batchUpdate`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requests: [{ deleteSheet: { sheetId: oldSheet.properties.sheetId } }]
+              })
+            });
+          }
+        } catch (err) {
+          console.warn('Error al migrar datos de ZONAS a CATEGORIAS:', err);
+        }
+      }
     }
   } catch (e) {
-    console.warn('No se pudo verificar/crear pestaña ZONAS:', e);
+    console.warn('No se pudo verificar/crear pestaña CATEGORIAS:', e);
   }
 }
 
-// Cargar zonas desde la pestaña ZONAS del Google Sheet
-async function loadZonesFromSheet() {
+// Cargar categorías desde la pestaña CATEGORIAS del Google Sheet
+async function loadCategoriesFromSheet() {
   try {
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${ZONES_SHEET}!A:A`, {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${CATEGORIES_SHEET}!A:A`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const data = await res.json();
     if (data.values && data.values.length > 0) {
-      zones = data.values.map(row => row[0]).filter(Boolean);
+      categories = data.values.map(row => row[0]).filter(Boolean);
     }
-    // Si no hay zonas guardadas, dejar el array vacío
-    if (!zones.length) {
-      zones = [];
+    // Si no hay categorías guardadas, dejar el array vacío
+    if (!categories.length) {
+      categories = [];
     }
   } catch (e) {
-    console.warn('Error cargando zonas:', e);
+    console.warn('Error cargando categorías:', e);
   }
 }
 
-// Guardar zonas en la pestaña ZONAS del Google Sheet
-async function saveZonesToSheet() {
+// Guardar categorías en la pestaña CATEGORIAS del Google Sheet
+async function saveCategoriesToSheet() {
   try {
     // Limpiar la pestaña
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${ZONES_SHEET}!A:A:clear`, {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${CATEGORIES_SHEET}!A:A:clear`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-    // Escribir todas las zonas
-    if (zones.length > 0) {
-      const values = zones.map(z => [z]);
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${ZONES_SHEET}!A1:A${zones.length}?valueInputOption=USER_ENTERED`, {
+    // Escribir todas las categorías
+    if (categories.length > 0) {
+      const values = categories.map(c => [c]);
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${activeSheetId}/values/${CATEGORIES_SHEET}!A1:A${categories.length}?valueInputOption=USER_ENTERED`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ values })
       });
     }
   } catch (e) {
-    console.error('Error guardando zonas:', e);
+    console.error('Error guardando categorías:', e);
     throw e;
   }
 }
@@ -653,7 +696,7 @@ function view(v, el) {
   el.classList.add('active');
   if (v === 'lista') { curFilter = 'todos'; renderChips(); apply(); }
   else if (v === 'vencidos') { curFilter = '__old__'; renderChips(); apply(); }
-  else if (v === 'zonas') { renderZoneList(); open1('oZonas'); }
+  else if (v === 'categorias') { renderCategoryList(); open1('oCategorias'); }
   else if (v === 'resumen') { showResumen(); }
 }
 
@@ -662,8 +705,8 @@ function showResumen() {
   const ok = products.filter(p => days(p.fecha) <= 15).length;
   const warn = products.filter(p => { const d = days(p.fecha); return d > 15 && d <= 30; }).length;
   const old = products.filter(p => days(p.fecha) > 30).length;
-  const zm = {};
-  products.forEach(p => { if (p.zona) zm[p.zona] = (zm[p.zona] || 0) + 1; });
+  const cm = {};
+  products.forEach(p => { if (p.categoria) cm[p.categoria] = (cm[p.categoria] || 0) + 1; });
   document.getElementById('cardsEl').innerHTML = `
     <div style="padding:4px 0">
       <div style="font-size:13px;color:#9aa3b8;font-weight:700;margin-bottom:14px">RESUMEN GENERAL</div>
@@ -672,47 +715,47 @@ function showResumen() {
         <div class="box" style="background:#bbf7d0;border:2px solid #6ee7a0"><div class="box-lbl" style="color:#15803d">✅ Vigentes</div><div class="box-price" style="color:#15803d">${ok}</div></div>
         <div class="box" style="background:#fde68a;border:2px solid #f5c542"><div class="box-lbl" style="color:#a16207">⚠️ Verificar</div><div class="box-price" style="color:#a16207">${warn}</div></div>
         <div class="box full" style="background:#fecaca;border:2px solid #f87171"><div class="box-lbl" style="color:#b91c1c">🔴 Recotizar</div><div class="box-price" style="color:#b91c1c">${old}</div></div>
-        ${Object.entries(zm).map(([z, c]) => `<div class="box" style="background:#e0e7f5;border:2px solid #c0cde5"><div class="box-lbl">${z}</div><div class="box-val" style="font-size:22px;font-weight:800">${c}</div></div>`).join('')}
+        ${Object.entries(cm).map(([cat, c]) => `<div class="box" style="background:#e0e7f5;border:2px solid #c0cde5"><div class="box-lbl">${cat}</div><div class="box-val" style="font-size:22px;font-weight:800">${c}</div></div>`).join('')}
       </div>
     </div>`;
 }
 
-// ── ZONES ──
+// ── CATEGORIES ──
 function renderChips() {
   document.getElementById('filterBar').innerHTML =
     `<div class="chip ${curFilter === 'todos' ? 'active' : ''}" onclick="setFilter('todos',this)">Todos</div>` +
     `<div class="chip danger ${curFilter === '__old__' ? 'active' : ''}" onclick="setFilter('__old__',this)">⚠️ Recotizar</div>` +
-    zones.map(z => `<div class="chip ${curFilter === z ? 'active' : ''}" onclick="setFilter('${z}',this)">${z}</div>`).join('');
+    categories.map(c => `<div class="chip ${curFilter === c ? 'active' : ''}" onclick="setFilter('${c}',this)">${c}</div>`).join('');
 }
-function fillZoneSelect() {
-  const s = document.getElementById('fZ');
-  s.innerHTML = `<option value="">Seleccionar zona...</option>` +
-    zones.map(z => `<option value="${z}">${z}</option>`).join('');
+function fillCategorySelect() {
+  const s = document.getElementById('fCat');
+  s.innerHTML = `<option value="">Seleccionar categoría...</option>` +
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
 }
-function renderZoneList() {
-  document.getElementById('zoneListEl').innerHTML =
-    zones.map((z, i) => `<div class="zone-row"><span>${z}</span><button class="zone-del" onclick="removeZone(${i})">✕</button></div>`).join('');
+function renderCategoryList() {
+  document.getElementById('categoryListEl').innerHTML =
+    categories.map((c, i) => `<div class="category-row"><span>${c}</span><button class="category-del" onclick="removeCategory(${i})">✕</button></div>`).join('');
 }
-function addZone() {
-  const v = document.getElementById('newZone').value.trim();
-  if (!v || zones.includes(v)) return;
-  zones.push(v);
-  document.getElementById('newZone').value = '';
-  renderZoneList();
+function addCategory() {
+  const v = document.getElementById('newCategory').value.trim();
+  if (!v || categories.includes(v)) return;
+  categories.push(v);
+  document.getElementById('newCategory').value = '';
+  renderCategoryList();
 }
-function removeZone(i) { zones.splice(i, 1); renderZoneList(); }
-async function saveZones() {
+function removeCategory(i) { categories.splice(i, 1); renderCategoryList(); }
+async function saveCategories() {
   if (!isSessionValid()) return;
   sync('s');
   try {
-    await saveZonesToSheet();
+    await saveCategoriesToSheet();
     sync('ok');
     renderChips();
-    fillZoneSelect();
-    close1('oZonas');
+    fillCategorySelect();
+    close1('oCategorias');
   } catch (e) {
     sync('e');
-    alert('Error al guardar zonas: ' + e.message);
+    alert('Error al guardar categorías: ' + e.message);
   }
 }
 

@@ -789,15 +789,15 @@ body {
   min-height: 20px;
 }
 
-/* ZONES */
-.zone-list {
+/* CATEGORIES */
+.category-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.zone-row {
+.category-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -806,13 +806,13 @@ body {
   padding: 12px 14px;
 }
 
-.zone-row span {
+.category-row span {
   flex: 1;
   font-size: 16px;
   font-weight: 700;
 }
 
-.zone-del {
+.category-del {
   background: #fff5f5;
   border: none;
   color: #e53e3e;
@@ -826,12 +826,12 @@ body {
   justify-content: center;
 }
 
-.zone-add-row {
+.category-add-row {
   display: flex;
   gap: 10px;
 }
 
-.zone-input {
+.category-input {
   flex: 1;
   background: #f0f4fa;
   border: 2px solid #e2e8f3;
@@ -844,11 +844,11 @@ body {
   outline: none;
 }
 
-.zone-input:focus {
+.category-input:focus {
   border-color: #3b72d9;
 }
 
-.zone-add-btn {
+.category-add-btn {
   background: #3b72d9;
   color: #fff;
   border: none;
